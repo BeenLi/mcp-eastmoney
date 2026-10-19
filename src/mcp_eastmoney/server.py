@@ -30,7 +30,7 @@ TOOLS: list[Tool] = [
         description=(
             "获取A股个股实时行情（价格、涨跌幅、成交量、换手率、市盈率等）。"
             "Get real-time quote for an A-share stock — price, change %, volume, "
-            "turnover rate, P/E. 数据来源东方财富，延迟约15分钟。"
+            "turnover rate, P/E. 数据来源腾讯行情（失败时退回东方财富），ETF/LOF 同样适用。"
         ),
         inputSchema={
             "type": "object",
@@ -41,6 +41,25 @@ TOOLS: list[Tool] = [
                 }
             },
             "required": ["code"],
+        },
+    ),
+    Tool(
+        name="get_quotes",
+        description=(
+            "批量获取多只A股/ETF/LOF实时行情，一次请求完成，查多个代码时优先用它。"
+            "Batch real-time quotes for several A-share stocks/ETFs in a single request."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "codes": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "maxItems": 60,
+                    "description": "6位代码列表，如 [\"510300\", \"513100\", \"600519\"]",
+                }
+            },
+            "required": ["codes"],
         },
     ),
     Tool(
@@ -110,6 +129,37 @@ TOOLS: list[Tool] = [
             "required": ["code"],
         },
     ),
+    Tool(
+        name="get_index",
+        description=(
+            "获取指数行情和走势（上证/沪深300/中证500/创业板指/恒生等）。Index quote plus "
+            "K-line trend. code: 000001 上证指数, 000300 沪深300, 000905 中证500, 399006 创业板指, "
+            "000922 中证红利, HSI 恒生, NDX 纳斯达克100；或直接传 secid 如 1.000300。"
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "code": {"type": "string", "description": "指数代码或 secid"},
+                "period": {"type": "string", "enum": ["daily", "weekly", "monthly"], "default": "daily"},
+                "limit": {"type": "integer", "default": 30, "minimum": 2, "maximum": 500},
+            },
+            "required": ["code"],
+        },
+    ),
+    Tool(
+        name="get_fund_premium",
+        description=(
+            "场内基金（ETF/LOF）溢价率 = 场内价/净值-1。Premium/discount of an exchange-traded "
+            "fund vs. its NAV: 同时给出相对上一交易日官方净值和相对盘中估算净值的溢价率。"
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "code": {"type": "string", "description": "6位基金代码，如 513100（纳指ETF）、161725（白酒LOF）"}
+            },
+            "required": ["code"],
+        },
+    ),
 ]
 
 
@@ -124,6 +174,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     try:
         if name == "get_stock_quote":
             data = await c.get_quote(arguments["code"])
+        elif name == "get_quotes":
+            data = await c.get_quotes(arguments["codes"])
         elif name == "search_stock":
             data = await c.search(arguments["keyword"], arguments.get("limit", 10))
         elif name == "main_fund_rank":
@@ -140,6 +192,14 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 arguments.get("period", "daily"),
                 arguments.get("limit", 30),
             )
+        elif name == "get_index":
+            data = await c.get_index(
+                arguments["code"],
+                arguments.get("period", "daily"),
+                arguments.get("limit", 30),
+            )
+        elif name == "get_fund_premium":
+            data = await c.fund_premium(arguments["code"])
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
     except Exception as e:
