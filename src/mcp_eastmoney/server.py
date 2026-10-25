@@ -160,6 +160,118 @@ TOOLS: list[Tool] = [
             "required": ["code"],
         },
     ),
+    # ================================================================
+    #  6. 北向资金
+    # ================================================================
+    Tool(
+        name="north_bound_flow",
+        description=(
+            "北向资金流向数据（北向合计 + 沪股通 + 深股通明细）。"
+            "North-bound capital flow via Stock Connect. "
+            "返回每日买入/卖出/净额，单位元。可直接判断外资动向。"
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "days": {"type": "integer", "default": 5, "minimum": 1, "maximum": 30,
+                         "description": "获取最近N天的北向资金数据"},
+            },
+        },
+    ),
+    # ================================================================
+    #  7. 龙虎榜 - 涨停池
+    # ================================================================
+    Tool(
+        name="limit_up_pool",
+        description=(
+            "涨停板股票池（龙虎榜数据）。Today's limit-up stocks — "
+            "连板数、封板时间、封板资金、炸板次数、所属行业。用于短线情绪分析。"
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "date": {"type": "string", "description": "交易日 YYYYMMDD，默认今天"},
+                "limit": {"type": "integer", "default": 50, "minimum": 1, "maximum": 200,
+                          "description": "返回数量"},
+                "sort": {
+                    "type": "string",
+                    "default": "fbt:asc",
+                    "description": "排序: fbt:asc(按封板时间), zdp:desc(按涨幅), lbc:desc(按连板)",
+                },
+            },
+        },
+    ),
+    # ================================================================
+    #  8. 技术指标 (MA / MACD / KDJ)
+    # ================================================================
+    Tool(
+        name="technical_indicators",
+        description=(
+            "计算个股技术指标：MA5/10/20/30/60 均线 + MACD (DIF/DEA/柱) + KDJ。"
+            "Technical indicators — moving averages, MACD, KDJ, "
+            "基于K线数据本地计算，无需额外API。"
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "code": {"type": "string", "description": "6位股票代码"},
+                "period": {
+                    "type": "string",
+                    "enum": ["daily", "weekly", "monthly"],
+                    "default": "daily",
+                },
+                "limit": {
+                    "type": "integer", "default": 120, "minimum": 60, "maximum": 500,
+                    "description": "取多少根K线用于计算（建议 >= 120，长周期需更多数据）",
+                },
+            },
+            "required": ["code"],
+        },
+    ),
+    # ================================================================
+    #  9. 港股/美股行情
+    # ================================================================
+    Tool(
+        name="hk_us_quote",
+        description=(
+            "获取港股或美股实时行情。Hong Kong / US stock real-time quote. "
+            "例如 00700(腾讯)、AAPL(苹果)、TSLA(特斯拉)。数据来源于东方财富。"
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "code": {"type": "string", "description": "股票代码，港股如 00700，美股如 AAPL"},
+                "market": {
+                    "type": "string",
+                    "enum": ["hk", "us"],
+                    "default": "hk",
+                    "description": "市场: hk(港股) / us(美股)",
+                },
+            },
+            "required": ["code"],
+        },
+    ),
+    Tool(
+        name="hk_us_kline",
+        description=(
+            "获取港股或美股K线数据。HK / US stock K-line. "
+            "支持日/周/月线及分钟级。"
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "code": {"type": "string", "description": "股票代码"},
+                "market": {"type": "string", "enum": ["hk", "us"], "default": "hk"},
+                "period": {
+                    "type": "string",
+                    "enum": ["daily", "weekly", "monthly", "5min", "15min", "30min", "60min"],
+                    "default": "daily",
+                },
+                "limit": {"type": "integer", "default": 30, "minimum": 1, "maximum": 500},
+            },
+            "required": ["code"],
+        },
+    ),
 ]
 
 
@@ -200,6 +312,32 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             )
         elif name == "get_fund_premium":
             data = await c.fund_premium(arguments["code"])
+        elif name == "north_bound_flow":
+            data = await c.north_bound_flow(arguments.get("days", 5))
+        elif name == "limit_up_pool":
+            data = await c.limit_up_pool(
+                date_str=arguments.get("date"),
+                limit=arguments.get("limit", 50),
+                sort=arguments.get("sort", "fbt:asc"),
+            )
+        elif name == "technical_indicators":
+            data = await c.technical_indicators(
+                arguments["code"],
+                arguments.get("period", "daily"),
+                arguments.get("limit", 120),
+            )
+        elif name == "hk_us_quote":
+            data = await c.hk_us_quote(
+                arguments["code"],
+                arguments.get("market", "hk"),
+            )
+        elif name == "hk_us_kline":
+            data = await c.hk_us_kline(
+                arguments["code"],
+                arguments.get("market", "hk"),
+                arguments.get("period", "daily"),
+                arguments.get("limit", 30),
+            )
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
     except Exception as e:

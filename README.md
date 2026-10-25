@@ -26,9 +26,11 @@
 - 🔀 **双数据源**：行情、日/周/月 K 线、指数优先走腾讯（支持批量、限流宽松），失败自动退回东财
 - 📈 **指数走势**：上证、沪深300、中证500/1000、中证红利、创业板指、科创50、恒生、纳指100、标普500
 - 💰 **场内基金溢价率**：ETF/LOF 场内价相对官方净值的溢价/折价
+- 🧮 **技术指标**：MA / MACD / KDJ 本地计算，不依赖 numpy/pandas
+- 🌏 **北向资金、涨停池、港股/美股**：来自上游 v0.2.0
 - 🔌 **标准 MCP 协议**：兼容 Claude Desktop / Claude Code / Cursor / Cline 等客户端
 
-### 🛠️ 提供的 Tools（8 个）
+### 🛠️ 提供的 Tools（13 个）
 
 | Tool | 说明 | 数据源 | 示例 |
 |------|------|--------|------|
@@ -36,10 +38,15 @@
 | `get_quotes` | 批量行情，一次请求最多 60 个代码 | 腾讯 | `get_quotes(codes=["600519","510300","159941"])` |
 | `get_index` | 指数快照 + K 线走势 + 区间涨跌/高低点 | 腾讯 → 东财 | `get_index(code="000300", limit=20)` |
 | `get_fund_premium` | 场内基金溢价率 = 场内价 ÷ 净值 − 1 | 腾讯 + 东财 F10 | `get_fund_premium(code="513100")` |
-| `get_kline` | 历史 K 线（日/周/月，前复权；5/15/30/60 分钟） | 日周月：腾讯 → 东财；分钟：东财 | `get_kline(code="600519", period="weekly")` |
+| `get_kline` | 历史 K 线（日/周/月，前复权；5/15/30/60 分钟） | 日线：腾讯 → 东财 → 新浪；周/月：腾讯 → 东财；分钟：东财 → 新浪 | `get_kline(code="600519", period="weekly")` |
 | `search_stock` | 按名称/拼音/代码搜索 | 东财 | `search_stock(keyword="宁德")` |
 | `main_fund_rank` | 主力资金净流入排行 | 东财 | `main_fund_rank(market="all", limit=10)` |
 | `sector_fund_flow` | 行业/概念板块资金流 + 领涨股 | 东财 | `sector_fund_flow(kind="industry")` |
+| `technical_indicators` | K 线 + MA5/10/20/30/60、MACD、KDJ | 同 `get_kline` | `technical_indicators(code="510300", limit=120)` |
+| `north_bound_flow` | 北向/南向资金每日买入、卖出、净额 | 东财 | `north_bound_flow(days=5)` |
+| `limit_up_pool` | 涨停池：连板数、封板时间、封板资金、炸板次数 | 东财 | `limit_up_pool(date="20261024")` |
+| `hk_us_quote` | 港股/美股实时行情 | 东财 | `hk_us_quote(code="00700", market="hk")` |
+| `hk_us_kline` | 港股/美股 K 线 | 东财 | `hk_us_kline(code="AAPL", market="us")` |
 
 `get_index` 的 `code` 可用：`000001` 上证指数、`000016` 上证50、`000300` 沪深300、`000905` 中证500、`000852` 中证1000、`000688` 科创50、`000922` 中证红利、`399001` 深证成指、`399006` 创业板指、`HSI` 恒生、`NDX` 纳指100、`SPX` 标普500，也可直接传东财 secid（如 `1.000300`）。
 
@@ -61,7 +68,7 @@ uvx --from git+https://github.com/BeenLi/mcp-eastmoney mcp-eastmoney
 git clone https://github.com/BeenLi/mcp-eastmoney ~/Developer/selfhosted/mcp-eastmoney
 cd ~/Developer/selfhosted/mcp-eastmoney
 uv sync
-uv run python tests/test_mcp_protocol.py   # 应列出 8 个工具
+uv run python tests/test_mcp_protocol.py   # 应列出 13 个工具
 ```
 
 ### 🔌 接入 Claude Desktop
@@ -115,6 +122,9 @@ MCP 服务器只是一层"翻译"：客户端通过 stdin/stdout 发 JSON-RPC �
 | `push2delay.eastmoney.com/api/qt/stock/get` | 东财单只快照（延时约 15 分钟） | `secid=市场.代码`；价格是整数，按 `f59` 的小数位缩放 |
 | `push2his.eastmoney.com/api/qt/stock/kline/get` | 东财 K 线（含分钟线） | `klt=101/102/103` 日/周/月，`fqt=1` 前复权 |
 | `push2delay.eastmoney.com/api/qt/clist/get` | 东财主力资金、板块排行 | `fid=f62` 按主力净流入排序 |
+| `push2delay.eastmoney.com/api/qt/kamt.kline/get` | 东财北向/南向资金 | |
+| `push2ex.eastmoney.com/getTopicZTPool` | 东财涨停池 | |
+| `money.finance.sina.com.cn/.../getKLineData` | 新浪 K 线（A 股兜底） | 不复权；成交量单位是股 |
 | `api.fund.eastmoney.com/f10/lsjz` | 东财 F10 历史净值 | 需 `fundf10.eastmoney.com` 的 Referer |
 
 几个容易踩的细节：
@@ -127,6 +137,7 @@ MCP 服务器只是一层"翻译"：客户端通过 stdin/stdout 发 JSON-RPC �
 ### 与上游的差异
 
 - 新增 `get_quotes`、`get_index`、`get_fund_premium` 三个工具
+- 合并上游 v0.2.0 的 5 个工具（北向资金、涨停池、技术指标、港股/美股行情和 K 线）和新浪 K 线兜底；`limit_up_pool` 补上了 `date` 参数
 - 行情、日/周/月 K 线、指数改为腾讯优先、东财备用
 - 依赖锁定 `mcp>=1.0.0,<2`（mcp 2.x 去掉了 `Server.list_tools()` 装饰器接口），并加入 `uv.lock`
 - 修复：价格小数位改用 `f59`；`pe` 改读 `f162`（动态市盈率，原来读的 `f169` 是涨跌额）；ETF/LOF 无市盈率时返回空值而不是 0
@@ -134,7 +145,7 @@ MCP 服务器只是一层"翻译"：客户端通过 stdin/stdout 发 JSON-RPC �
 ### ⚠️ 数据说明
 
 - 数据来自腾讯、东方财富的公开接口，东财为延时行情，仅供研究参考，不构成任何投资建议
-- 分钟 K 线、资金流、搜索只有东财源；东财限流时这几个工具会报错，其余工具不受影响
+- 资金流、北向资金、涨停池、搜索、港股/美股只有东财源；东财限流时这几个工具会报错，其余工具不受影响
 - 请合理控制请求频率，查多个代码时优先用 `get_quotes`
 
 ### 📜 License
@@ -147,7 +158,7 @@ MIT
 
 **mcp-eastmoney** is an [MCP](https://modelcontextprotocol.io) server that gives AI assistants China A-share, ETF/LOF and index market data, plus exchange-traded fund premium/discount, using free public endpoints from Tencent and Eastmoney. No API key required.
 
-This is a fork of [27dream/mcp-eastmoney](https://github.com/27dream/mcp-eastmoney) that adds a Tencent data source (batch quotes, lenient rate limits) with Eastmoney fallback, index and fund-premium tools, and several parsing fixes.
+This is a fork of [27dream/mcp-eastmoney](https://github.com/27dream/mcp-eastmoney) (including upstream v0.2.0) that adds a Tencent data source (batch quotes, lenient rate limits) with Eastmoney fallback, index and fund-premium tools, and several parsing fixes.
 
 ### 🛠️ Tools
 
@@ -157,10 +168,14 @@ This is a fork of [27dream/mcp-eastmoney](https://github.com/27dream/mcp-eastmon
 | `get_quotes` | Batch quotes, up to 60 codes in one request (Tencent) |
 | `get_index` | Index snapshot + K-line trend (CSI 300, SSE, ChiNext, CSI Dividend, HSI, NDX, SPX…) |
 | `get_fund_premium` | ETF/LOF premium = exchange price ÷ official NAV − 1 |
-| `get_kline` | Daily/weekly/monthly (Tencent → Eastmoney) or 5/15/30/60-min (Eastmoney) K-lines |
+| `get_kline` | Daily/weekly/monthly (Tencent → Eastmoney, daily also Sina) or 5/15/30/60-min (Eastmoney → Sina) K-lines |
 | `search_stock` | Search by name / pinyin / code (Eastmoney) |
 | `main_fund_rank` | Main capital net inflow ranking (Eastmoney) |
 | `sector_fund_flow` | Industry / concept sector capital flow (Eastmoney) |
+| `technical_indicators` | K-line plus MA / MACD / KDJ, computed locally |
+| `north_bound_flow` | Stock Connect north/south-bound daily flow (Eastmoney) |
+| `limit_up_pool` | Limit-up stock pool with board count and seal time (Eastmoney) |
+| `hk_us_quote` / `hk_us_kline` | Hong Kong / US stock quote and K-line (Eastmoney) |
 
 ### 🚀 Quick Start
 
