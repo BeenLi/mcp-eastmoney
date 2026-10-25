@@ -30,7 +30,7 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
   "mcpServers": {
     "eastmoney": {
       "command": "uvx",
-      "args": ["mcp-eastmoney"]
+      "args": ["--from", "git+https://github.com/BeenLi/mcp-eastmoney", "mcp-eastmoney"]
     }
   }
 }
