@@ -53,7 +53,7 @@
 uvx --from git+https://github.com/BeenLi/mcp-eastmoney mcp-eastmoney
 ```
 
-> ⚠️ 不要用 `uvx mcp-eastmoney` 安装 PyPI 上的版本：它没有锁定 `mcp<2`，装到 mcp 2.x 会启动即崩溃。
+> ⚠️ 这个包没有发布到 PyPI，`uvx mcp-eastmoney` / `pip install mcp-eastmoney` 找不到它，请用上面的 git 地址安装。依赖里锁定了 `mcp<2`：mcp 2.x 去掉了本项目用的装饰器接口，装到 2.x 会启动即崩溃。
 
 **方式二：克隆到本地（便于自己修改）**
 
@@ -181,7 +181,7 @@ Claude Desktop config:
 }
 ```
 
-Avoid `uvx mcp-eastmoney` from PyPI: that release does not pin `mcp<2` and crashes on startup with mcp 2.x.
+The package is not published on PyPI, so `uvx mcp-eastmoney` / `pip install mcp-eastmoney` will not find it; install from the git URL above. Dependencies pin `mcp<2` because mcp 2.x removed the decorator API this server uses.
 
 ### ⚠️ Disclaimer
 
