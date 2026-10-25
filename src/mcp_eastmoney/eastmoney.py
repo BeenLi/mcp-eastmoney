@@ -269,7 +269,7 @@ class EastmoneyClient:
             "volume": int(_safe(d.get("f47"))),
             "amount": _fmt_money(_safe(d.get("f48"))),
             "turnover_rate": round(_safe(d.get("f168")) / 100, 2),
-            "pe": round(_safe(d.get("f162")) / 100, 2),  # f162=动态市盈率（f169 是涨跌额）
+            "pe": round(_safe(d.get("f162")) / 100, 2) or None,  # f162=动态市盈率（f169 是涨跌额）；港美股/ETF 无则为空
         }
 
     # ---- 2. 主力资金排行 ----

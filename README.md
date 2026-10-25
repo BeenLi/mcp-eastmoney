@@ -43,7 +43,7 @@
 | `main_fund_rank` | 主力资金净流入排行 | 东财 | `main_fund_rank(market="all", limit=10)` |
 | `sector_fund_flow` | 行业/概念板块资金流 + 领涨股 | 东财 | `sector_fund_flow(kind="industry")` |
 | `technical_indicators` | K 线 + MA5/10/20/30/60、MACD、KDJ | 同 `get_kline` | `technical_indicators(code="510300", limit=120)` |
-| `north_bound_flow` | 北向/南向资金每日买入、卖出、净额 | 东财 | `north_bound_flow(days=5)` |
+| `north_bound_flow` | 北向/南向资金每日买入、卖出、净额 ⚠️ 数字已无参考价值，见数据说明 | 东财 | `north_bound_flow(days=5)` |
 | `limit_up_pool` | 涨停池：连板数、封板时间、封板资金、炸板次数 | 东财 | `limit_up_pool(date="20261024")` |
 | `hk_us_quote` | 港股/美股实时行情 | 东财 | `hk_us_quote(code="00700", market="hk")` |
 | `hk_us_kline` | 港股/美股 K 线 | 东财 | `hk_us_kline(code="AAPL", market="us")` |
@@ -146,6 +146,7 @@ MCP 服务器只是一层"翻译"：客户端通过 stdin/stdout 发 JSON-RPC �
 
 - 数据来自腾讯、东方财富的公开接口，东财为延时行情，仅供研究参考，不构成任何投资建议
 - 资金流、北向资金、涨停池、搜索、港股/美股只有东财源；东财限流时这几个工具会报错，其余工具不受影响
+- `north_bound_flow`：2024 年 8 月起沪深交易所不再实时披露北向资金买卖额，接口返回的数字（实测买入 840 万、卖出 0）已不能用来判断外资动向，仅为兼容上游保留
 - 请合理控制请求频率，查多个代码时优先用 `get_quotes`
 
 ### 📜 License
@@ -173,7 +174,7 @@ This is a fork of [27dream/mcp-eastmoney](https://github.com/27dream/mcp-eastmon
 | `main_fund_rank` | Main capital net inflow ranking (Eastmoney) |
 | `sector_fund_flow` | Industry / concept sector capital flow (Eastmoney) |
 | `technical_indicators` | K-line plus MA / MACD / KDJ, computed locally |
-| `north_bound_flow` | Stock Connect north/south-bound daily flow (Eastmoney) |
+| `north_bound_flow` | Stock Connect north/south-bound daily flow (Eastmoney). Exchanges stopped real-time disclosure in Aug 2024, so the figures are not meaningful |
 | `limit_up_pool` | Limit-up stock pool with board count and seal time (Eastmoney) |
 | `hk_us_quote` / `hk_us_kline` | Hong Kong / US stock quote and K-line (Eastmoney) |
 
